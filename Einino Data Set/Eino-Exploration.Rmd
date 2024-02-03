@@ -1,0 +1,568 @@
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+date: "2023-12-01"
+---
+
+```{r }
+df_EI=read.table('tao-all2.txt', na.strings = '.', header= FALSE)  #Load data file
+df_EI$V5 = as.character(df_EI$V5)  # Change column into character 
+df_EI$V5 <- as.Date(df_EI$V5, '%y%m%d')  # changing date in date format
+colnames(df_EI) = c("obs", "year", "month", "day", "date", "latitude", "longitude", "zon_winds", "mer_winds", "humidity", "air_temp", "s_s_temp.")
+summary(df_EI)   # printing data statistics 
+``` 
+```{r }
+na_count <- colSums(is.na(df_EI))
+total_na_count <- sum(na_count)   # Na valuse in data set 
+print(total_na_count) # Display the result
+```
+```{r }
+par(mfrow = c(3, 3))  # setting plot area
+boxplot(df_EI$obs)
+boxplot(df_EI$latitude)
+boxplot(df_EI$longitude)
+boxplot(df_EI$zon_winds)
+boxplot(df_EI$mer_winds)
+boxplot(df_EI$humidity)
+boxplot(df_EI$air_temp)
+boxplot(df_EI$s_s_temp.)
+```
+```{R }
+numeric_columns <- sapply(df_EI[, 6:ncol(df_EI)], is.numeric)  # excluding the obs, date, year , mont columns
+# Calculate correlation matrix for numeric columns only (excluding the first 5 columns)
+cor_matrix <- cor(df_EI[, 6:ncol(df_EI)][, numeric_columns], use = "complete.obs")
+library(corrplot)
+corrplot(cor_matrix, method = "color")
+```
+```{r }
+df_EI$longitude = (df_EI$longitude) %% 360   # Changing Positinion 
+plot(df_EI$longitude, df_EI$latitude)
+```
+```{r }
+# Function to assign hemisphere based on latitude
+assign_hemisphere <- function(latitude) {
+  if (latitude >= 0.0) {
+    return("Northern")
+  } else {
+    return("Southern")
+  }
+}
+# Create 'Hemisphere' column based on 'Latitude'
+df_EI$Hemisphere <- sapply(df_EI$latitude, assign_hemisphere)
+```
+
+```{r }
+# Assuming 'df' is your data frame
+model <- lm(s_s_temp. ~  latitude+longitude+zon_winds + mer_winds + humidity + air_temp, data =df_EI)
+# Display the summary of the linear model
+summary(model)
+```
+
+```{r }
+library(ggplot2)
+plot_title <- "World Distribution of Buoys"
+ggplot(data = df_EI, aes(x = longitude, y = latitude, color = Hemisphere)) +
+  geom_point() +
+  labs(title = plot_title) +
+  theme_minimal()
+```
+
+```{r fig.width=9  }
+library(ggplot2)
+# Calculate sea surface temperature anomaly
+df_EI$sst_anomaly <- df_EI$s_s_temp. - mean(df_EI$s_s_temp., na.rm = TRUE)
+
+# Define a threshold for sea surface temperature anomaly
+el_nino_anomaly_threshold <- 0.5  # Adjust the threshold as needed
+# Identify El Niño occurrences
+el_nino_data <- subset(df_EI, sst_anomaly > el_nino_anomaly_threshold)
+
+# Count the number of El Niño occurrences per year and Hemisphere
+el_nino_counts <- table(el_nino_data$year, el_nino_data$Hemisphere)
+
+# Convert to data frame
+el_nino_counts_df <- as.data.frame(el_nino_counts)
+
+# Create a stacked bar plot with bars above and below 0
+ggplot(data = el_nino_counts_df, aes(x = factor(Var1), y = Freq, fill = Var2)) +
+  geom_bar(stat = "identity", aes(y = ifelse(Var2 == "Southern", Freq, -Freq)), position = "stack", color = "black") +
+  labs(title = "El Niño Occurrences Over the Years by Hemisphere",
+       x = "Year",
+       y = "Number of Occurrences",
+       fill = "Hemisphere",
+       caption = "Data source: Your Data Source") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Northern" = "yellowgreen", "Southern" = "darkorange"))
+
+
+``` 
+```{R }
+# Calculate sea surface temperature anomaly
+df_EI$sst_anomaly <- df_EI$s_s_temp. - mean(df_EI$s_s_temp., na.rm = TRUE)
+
+# Define a threshold for sea surface temperature anomaly
+el_nino_anomaly_threshold <- 0.5  # Adjust the threshold as needed
+
+# Identify El Niño occurrences
+el_nino_data <- subset(df_EI, sst_anomaly > el_nino_anomaly_threshold)
+
+# Count the number of El Niño occurrences per year and Hemisphere
+el_nino_counts <- table(el_nino_data$year, el_nino_data$Hemisphere)
+
+# Convert to data frame
+el_nino_counts_df <- as.data.frame(el_nino_counts)
+
+# Set factor levels to ensure correct ordering
+el_nino_counts_df$Var1 <- factor(el_nino_counts_df$Var1, levels = unique(el_nino_counts_df$Var1))
+
+# Load ggplot2 package if not already loaded
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+library(ggplot2)
+
+# Create a stacked bar plot with bars above and below 0
+ggplot(data = el_nino_counts_df, aes(x = factor(Var1), y = Freq, fill = Var2)) +
+  geom_bar(stat = "identity", aes(y = ifelse(Var2 == "Southern", Freq, -Freq)), position = "stack", color = "black") +
+  labs(title = "El Niño Occurrences Over the Years by Hemisphere",
+       x = "Year",
+       y = "Number of Occurrences",
+       fill = "Hemisphere",
+       caption = "Data source: Your Data Source") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Northern" = "yellowgreen", "Southern" = "darkorange"))
+
+
+
+```
+
+```{r }
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+
+# Assuming 'df_EI' is your data frame
+# Convert 'date' to POSIXct and extract 'year'
+df_EI <- df_EI %>%
+  mutate(date = as.POSIXct(date),
+         year = year(date))
+
+# Calculate the average humidity by year
+avg_humidity_by_year <- df_EI %>%
+  group_by(year) %>%
+  summarize(avg_humidity = mean(humidity, na.rm = TRUE))
+
+# Define breaks for the x-axis
+custom_breaks <- seq(from = 1980, to = 1998, by = 3)
+
+# Plot average humidity against the year
+ggplot(avg_humidity_by_year, aes(x = year, y = avg_humidity)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Average Humidity Over the Years",
+       x = "Year",
+       y = "Average Humidity",
+       caption = "Data source: Your Data Source") +
+  theme_minimal() +
+  scale_x_continuous(breaks = custom_breaks)
+
+
+# Calculate the average meridional winds by year
+avg_mer_winds_by_year <- df_EI %>%
+  group_by(year) %>%
+  summarize(avg_mer_winds = mean(mer_winds, na.rm = TRUE))
+
+# Plot average meridional winds against the year
+ggplot(avg_mer_winds_by_year, aes(x = year, y = avg_mer_winds)) +
+  geom_line(color = "green", size = 1) +
+  labs(title = "Average Meridional Winds Over the Years",
+       x = "Year",
+       y = "Average Meridional Winds",
+       caption = "Data source: Your Data Source") +
+  theme_minimal() +
+  scale_x_continuous(breaks = custom_breaks)
+
+# Calculate the average zonal winds by year
+avg_zon_winds_by_year <- df_EI %>%
+  group_by(year) %>%
+  summarize(avg_zon_winds = mean(zon_winds, na.rm = TRUE))
+
+# Plot average zonal winds against the year
+ggplot(avg_zon_winds_by_year, aes(x = year, y = avg_zon_winds)) +
+  geom_line(color = "orange", size = 1) +
+  labs(title = "Average Zonal Winds Over the Years",
+       x = "Year",
+       y = "Average Zonal Winds",
+       caption = "Data source: Your Data Source") +
+  theme_minimal() +
+  scale_x_continuous(breaks = custom_breaks)
+
+```
+
+```{r }
+
+library(ggplot2)
+library(dplyr)
+
+# Set latitude and longitude ranges
+latitude_range <- c(-5, 0)
+longitude_range <- c(200, 250)
+
+# Filter data within the specified latitude and longitude ranges
+selected_points <- df_EI %>%
+  filter(latitude >= latitude_range[1] & latitude <= latitude_range[2],
+         longitude >= longitude_range[1] & longitude <= longitude_range[2])
+
+# Calculate the mean air and sea surface temperature by year
+mean_temperatures <- selected_points %>%
+  group_by(year) %>%
+  summarize(mean_air_temp = mean(air_temp, na.rm = TRUE),
+            mean_s_s_temp = mean(s_s_temp., na.rm = TRUE))
+
+# Reshape data for plotting
+mean_temperatures_long <- tidyr::gather(mean_temperatures, key = "TemperatureType", value = "MeanTemperature", -year)
+
+# Plot the mean air and sea surface temperature by year with legend
+plot_title <- paste("Air and Sea Surface Temperature in Latitude Range [", latitude_range[1], ",", latitude_range[2], "] and Longitude Range [", longitude_range[1], ",", longitude_range[2], "]")
+ggplot(data = mean_temperatures_long, aes(x = year, y = MeanTemperature, color = TemperatureType)) +
+  geom_line(size = 1.5) +
+  labs(title = plot_title, x = "Year", y = "Temperature (degrees Celcius)") +
+  scale_color_manual(values = c("darkorange", "steelblue"),
+                     labels = c("Sea Temperature", "Air Temperature")) +
+  theme_minimal()
+
+
+```
+```{R }
+# Set latitude and longitude ranges
+latitude_range <- c(0, 5)
+longitude_range <- c(150, 170)
+
+# Filter data within the specified latitude and longitude ranges
+selected_points <- df_EI %>%
+  filter(latitude >= latitude_range[1] & latitude <= latitude_range[2],
+         longitude >= longitude_range[1] & longitude <= longitude_range[2])
+
+# Calculate the mean air and sea surface temperature by year
+mean_temperatures <- selected_points %>%
+  group_by(year) %>%
+  summarize(mean_air_temp = mean(air_temp, na.rm = TRUE),
+            mean_s_s_temp = mean(s_s_temp., na.rm = TRUE))
+
+# Reshape data for plotting
+mean_temperatures_long <- tidyr::gather(mean_temperatures, key = "TemperatureType", value = "MeanTemperature", -year)
+
+# Detect peaks
+peaks <- mean_temperatures_long %>%
+  group_by(TemperatureType) %>%
+  slice(which(diff(sign(diff(MeanTemperature))) == -2) + 1)
+
+# Plot the mean air and sea surface temperature by year with legend
+plot_title <- paste("Air and Sea Surface Temperature in Latitude Range [", latitude_range[1], ",", latitude_range[2], "] and Longitude Range [", longitude_range[1], ",", longitude_range[2], "]")
+ggplot(data = mean_temperatures_long, aes(x = year, y = MeanTemperature, color = TemperatureType)) +
+  geom_line(size = 1.5) +
+  geom_point(data = peaks, aes(x = year, y = MeanTemperature), color = "black", size = 3, shape = 16) +
+  labs(title = plot_title, x = "Year", y = "Temperature (degrees Celsius)") +
+  scale_color_manual(values = c("darkorange", "steelblue"),
+                     labels = c("Sea Temperature", "Air Temperature")) +
+  theme_minimal()
+
+
+```
+
+```{r fig.width=12, warring= FALSE}
+# Assuming 'df_EI' is your data frame
+library(ggplot2)
+library(dplyr)
+library(gridExtra)  # Load gridExtra package
+
+# Convert 'date' to POSIXct and extract 'year'
+df_EI <- df_EI %>%
+  mutate(date = as.POSIXct(date),
+         year = lubridate::year(date))
+
+# Calculate the average values by year
+avg_vars_by_year <- df_EI %>%
+  group_by(year) %>%
+  summarize(avg_s_s_temp = mean(s_s_temp., na.rm = TRUE),
+            avg_zon_winds = mean(zon_winds, na.rm = TRUE),
+            avg_mer_winds = mean(mer_winds, na.rm = TRUE),
+            avg_hum = mean(humidity, na.rm = TRUE))
+
+# Define breaks for the x-axis
+custom_breaks <- seq(from = 1980, to = 1998, by = 3)
+
+# Create three separate plots side by side in a grid
+grid.arrange(
+  # Plot 1: Average Sea Surface Temperature vs. Zonal Winds
+  ggplot(avg_vars_by_year, aes(x = year)) +
+    geom_point(aes(y = avg_zon_winds, color = avg_s_s_temp), alpha = 0.7, size = 3) +
+    geom_line(aes(y = avg_zon_winds, group = 1), color = "darkorange", size = 1) +
+    geom_vline(xintercept = custom_breaks, linetype = "dashed", color = "lightgray", size = 0.25) +
+    labs(title = "Sea Surface Temperature vs. Zonal Winds",
+         x = "Year",
+         y = "Zonal Winds",
+         color = "Sea Surface Temperature (C)") +
+    scale_color_viridis_c() +
+    theme_minimal() +
+    scale_x_continuous(breaks = custom_breaks),
+
+  # Plot 2: Average Sea Surface Temperature vs. Meridional Winds
+  ggplot(avg_vars_by_year, aes(x = year)) +
+    geom_point(aes(y = avg_mer_winds, color = avg_s_s_temp), alpha = 0.7, size = 3) +
+    geom_line(aes(y = avg_mer_winds, group = 1), color = "steelblue", size = 1) +
+    geom_vline(xintercept = custom_breaks, linetype = "dashed", color = "lightgray", size = 0.25) +
+    labs(title = "Sea Surface Temperature vs. Meridional Winds",
+         x = "Year",
+         y = "Meridional Winds",
+         color = "Sea Surface Temperature (C)") +
+    scale_color_viridis_c() +
+    theme_minimal() +
+    scale_x_continuous(breaks = custom_breaks),
+
+  # Plot 3: Average Sea Surface Temperature vs. Humidity
+  ggplot(avg_vars_by_year, aes(x = year)) +
+    geom_point(aes(y = avg_hum, color = avg_s_s_temp), alpha = 0.7, size = 3) +
+    geom_line(aes(y = avg_hum, group = 1), color = "darkgray", size = 1) +
+    geom_vline(xintercept = custom_breaks, linetype = "dashed", color = "lightgray", size = 0.25) +
+    labs(title = "Sea Surface Temperature vs. Humidity",
+         x = "Year",
+         y = "Humidity",
+         color = "Sea Surface Temperature (C)") +
+    scale_color_viridis_c() +
+    theme_minimal() +
+    scale_x_continuous(breaks = custom_breaks),
+
+  # Arrange the plots in a 1x3 grid
+  ncol = 2
+)
+
+```
+
+```{r }
+library(ggplot2)
+
+# Scatter plot: Latitude vs. Longitude with color-coded variations for Sea Surface Temperature
+ggplot(df_EI, aes(x = longitude, y = latitude, color = s_s_temp.)) +
+  geom_point(size = 3) +
+  scale_color_viridis_c(option = "magma") +  # Use "magma" color scale for green to red
+  labs(title = "Variations  of See Surface Temperature Dependence on Position",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Sea Surface Temperature") +
+  theme_minimal()
+
+# Scatter plot: Latitude vs. Longitude with color-coded variations for Air Temperature
+ggplot(df_EI, aes(x = longitude, y = latitude, color = air_temp)) +
+  geom_point(size = 3) +
+  scale_color_viridis_c(option = "magma") +  # Use "magma" color scale for green to red
+  labs(title = "Variations of Air Temperature Dependence on Position",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Air Temperature (C)") +
+  theme_minimal()
+
+
+
+``` 
+```{r }
+
+
+```
+
+
+
+
+```{r fig.width=9}
+# Assuming 'df_EI' is your data frame
+
+# Convert date to POSIXct
+df_EI$date <- as.POSIXct(df_EI$date)
+
+# Extract year from date
+df_EI$year <- lubridate::year(df_EI$date)
+
+# Calculate the mean of s_s_temp and air_temp by year and hemisphere
+mean_temps_by_year_hemisphere <- df_EI %>%
+  group_by(year, Hemisphere) %>%
+  summarize(mean_s_s_temp = mean(s_s_temp., na.rm = TRUE),
+            mean_air_temp = mean(air_temp, na.rm = TRUE))
+
+# Define breaks for the x-axis
+custom_breaks <- seq(from = 1980, to = 1998, by = 3)
+
+# Create a time series plot for the mean air and sea temperatures by year and hemisphere
+ggplot(mean_temps_by_year_hemisphere, aes(x = year)) +
+  geom_line(aes(y = mean_air_temp, color = "Air Temperature"), size = 1) +
+  geom_line(aes(y = mean_s_s_temp, color = "Sea Temperature"), size = 1) +
+  labs(title = "Change Air and Sea Temperatures by Years",
+       x = "Year", y = "Temperature in Degrees Celsius") +
+  scale_color_manual(values = c("Air Temperature" = "steelblue", "Sea Temperature" = "darkorange")) +
+  scale_x_continuous(breaks = custom_breaks) +
+  facet_wrap(~Hemisphere, scales = "free_x", ncol = 1) +
+  theme_minimal() +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 12, face = "bold"))
+
+```
+```{r }
+
+# Convert date to POSIXct
+df_EI$date <- as.POSIXct(df_EI$date)
+
+# Extract year from date
+df_EI$year <- lubridate::year(df_EI$date)
+
+# Calculate the mean of s_s_temp and air_temp by year and hemisphere
+mean_temps_by_year_hemisphere <- df_EI %>%
+  group_by(year, Hemisphere) %>%
+  summarize(mean_s_s_temp = mean(s_s_temp., na.rm = TRUE),
+            mean_air_temp = mean(air_temp, na.rm = TRUE))
+
+# Create a time series plot for the mean air and sea temperatures by year and hemisphere
+ggplot(mean_temps_by_year_hemisphere, aes(x = year)) +
+  geom_line(aes(y = mean_air_temp, color = "Air Temperature"), size = 1) +
+  geom_line(aes(y = mean_s_s_temp, color = "Sea Temperature"), size = 1) +
+  labs(title = "Change Air and Sea Temperatures by Years",
+       x = "Year", y = "Temperature in Degrees Celsius") +
+  scale_color_manual(values = c("Air Temperature" = "steelblue", "Sea Temperature" = "darkorange")) +
+  facet_wrap(~Hemisphere, scales = "free_x", ncol = 1) +
+  theme_minimal() +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 12, face = "bold")) +
+  scale_x_continuous(breaks = seq(1980, max(mean_temps_by_year_hemisphere$year), by = 3))
+
+```
+```{R }
+print(custom_breaks)
+min_year <- min(mean_temps_by_year_hemisphere$year)
+print(min_year)
+```
+
+
+
+```{r }
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+
+
+# Convert date to POSIXct
+df_EI$date <- as.POSIXct(df_EI$date)
+
+# Extract year and month from date
+df_EI$year <- lubridate::year(df_EI$date)
+df_EI$month <- lubridate::month(df_EI$date)
+```
+
+```{r }
+# Choose a specific year
+selected_year <- 1990
+
+# Subset data for the specific year
+df_subset <- df_EI %>%
+  filter(year == selected_year)
+
+# Calculate the mean of s_s_temp and air_temp by month and hemisphere
+mean_temps_by_month_hemisphere <- df_subset %>%
+  group_by(month, Hemisphere) %>%
+  summarize(mean_s_s_temp = mean(s_s_temp., na.rm = TRUE),
+            mean_air_temp = mean(air_temp, na.rm = TRUE),
+            .groups = 'drop')  # add .groups = 'drop' to fix potential issues with grouping
+
+# Create a time series plot for the mean air and sea temperatures by month and hemisphere
+ggplot(mean_temps_by_month_hemisphere, aes(x = month)) +
+  geom_line(aes(y = mean_air_temp, color = "Air Temperature"), size = 1) +
+  geom_line(aes(y = mean_s_s_temp, color = "Sea Temperature"), size = 1) +
+  labs(title = paste("Change Air and Sea Temperatures by Month for", selected_year),
+       x = "Month", y = "Temperature in Degrees Celsius") +
+  scale_color_manual(values = c("Air Temperature" = "steelblue", "Sea Temperature" = "darkorange")) +
+  facet_wrap(~ Hemisphere, scales = "free_x", ncol = 1) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb, minor_breaks = NULL) +
+  theme_minimal() +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 12, face = "bold"))
+
+
+
+```
+
+```{r }
+# Choose a specific year
+selected_year <- 1997
+
+# Subset data for the specific year
+df_subset <- df_EI %>%
+  filter(year == selected_year)
+
+# Calculate the mean of s_s_temp and air_temp by month and hemisphere
+mean_temps_by_month_hemisphere <- df_subset %>%
+  group_by(month, Hemisphere) %>%
+  summarize(mean_s_s_temp = mean(s_s_temp., na.rm = TRUE),
+            mean_air_temp = mean(air_temp, na.rm = TRUE),
+            .groups = 'drop')  # add .groups = 'drop' to fix potential issues with grouping
+
+# Create a time series plot for the mean air and sea temperatures by month and hemisphere
+ggplot(mean_temps_by_month_hemisphere, aes(x = month)) +
+  geom_line(aes(y = mean_air_temp, color = "Air Temperature"), size = 1) +
+  geom_line(aes(y = mean_s_s_temp, color = "Sea Temperature"), size = 1) +
+  labs(title = paste("Change Air and Sea Temperatures by Month for", selected_year),
+       x = "Month", y = "Temperature in Degrees Celsius") +
+  scale_color_manual(values = c("Air Temperature" = "steelblue", "Sea Temperature" = "darkorange")) +
+  facet_wrap(~ Hemisphere, scales = "free_x", ncol = 1) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb, minor_breaks = NULL) +
+  theme_minimal() +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 12, face = "bold"))
+
+```
+
+```{r }
+#Spatial Analysis - Heatmaps for Air and Sea Temperatures
+# Create a spatial plot for average air temperature
+ggplot(df_EI, aes(x = longitude, y = latitude, fill = air_temp)) +
+  geom_tile(width = 0.2, height = 0.2) +
+  labs(title = "Spatial Distribution of Average Air Temperature") +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal()
+
+
+
+```
+```{r }
+# Create a spatial plot for average sea temperature
+ggplot(df_EI, aes(x = longitude, y = latitude, fill = s_s_temp.)) +
+  geom_tile(width = 0.1, height = 0.1) +
+  labs(title = "Spatial Distribution of Average Sea Temperature") +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal()
+```
+
+```{r }
+#Correlation Analysis - Heatmap for Correlation Coefficients:
+# Subset the required columns for correlation analysis
+correlation_data <- df_EI[, c("latitude", "longitude", "air_temp", "s_s_temp.")]
+
+# Remove rows with NA values
+correlation_data <- na.omit(correlation_data)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(correlation_data)
+
+# Convert correlation matrix to a long format for plotting
+library(reshape2)  # Loading reshape2 package
+
+# Melt the correlation matrix
+correlation_melted <- melt(correlation_matrix)
+
+# Plot heatmap using ggplot
+ggplot(correlation_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "steelblue", high = "lightgreen", na.value = "white") +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  theme_minimal()
+
+```
+
