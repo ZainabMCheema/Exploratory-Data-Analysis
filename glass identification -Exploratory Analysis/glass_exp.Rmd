@@ -1,0 +1,368 @@
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+date: "2023-12-08"
+---
+
+```{r }
+df_glass =read.table('glass_data.txt', header = FALSE, sep = ',', na.strings = '.')
+library(ggplot2)
+```
+
+```{r }
+colnames(df_glass) = c('Id number',  'RI', 'Na','Mg', 'Al', 'Si', 'K_Pota' , 'Ca', 'Ba','Fe',  'glass_type')
+```
+
+```{r }
+summary(df_glass)
+```
+```{r}
+X <- df_glass[,1:9]
+par(mfrow = c(3, 3))
+for (i in 1:ncol(X)) {
+  hist(X[ ,i], xlab = names(X[i]), main = paste(names(X[i]), "Histogram"), col="steelblue")  
+}
+```
+```{r }
+pairs(X, main="Scatterplot Matrix", col='steelblue') 
+
+```
+```{r }
+X <- df_glass[,1:9]
+par(mfrow = c(3, 3))
+for (i in 1:ncol(X)) {
+  boxplot(X[ ,i], ylab = names(X[i]), horizontal=T,
+          main = paste(names(X[i]), "Boxplot"), col="steelblue")
+}
+
+```
+```{r }
+par(mfrow = c(3, 3))
+for (i in 1:ncol(X)) {
+  d <- density(X[,i], na.rm = TRUE)
+  plot(d, main = paste(names(X[i]), "Density"))
+  polygon(d, col="#009999")
+}
+
+``` 
+```{r }
+X <- df_glass[, 1:9]
+
+# Setting up the layout for multiple plots
+par(mfrow = c(3, 3))
+
+for (i in 1:ncol(X)) {
+  if (is.numeric(X[, i])) {
+    # Compute average values by 'glass_type'
+    avg_values <- aggregate(X[, i], by = list(glass_type = df_glass$glass_type), FUN = mean)
+    
+    # Bar plot for each numeric variable against 'glass_type'
+    barplot(avg_values$x, names.arg = avg_values$glass_type, 
+            xlab = "Glass Type", ylab = paste("Average", names(X)[i]), 
+            col = "#009999", main = paste("Average", names(X)[i], "by Glass Type"))
+  }
+}
+
+```
+
+```{r}
+#df_glass <- df_glass[, -1] # Remove the first column by index
+df_glass <- df_glass[, -which(names(df_glass) == "Id number")] # Remove by column name
+```
+
+```{r fig.width=14, warning=FALSE}
+library(GGally)
+pairs_plot <- GGally::ggpairs(df_glass, 
+  aes(color = ""), 
+  lower = list(continuous = "points"),
+  upper = list(continuous = "cor"),
+  diag = list(continuous = "barDiag")
+)
+pairs_plot <- pairs_plot + scale_color_manual(values = "darkgreen") 
+print(pairs_plot)
+
+```
+for Caption : Ca (Calcium) and RI (refractive index) are rather highly correlated (positively). From the scatter plots here below it seems that the relationship between is linear, RI increases as Ca increases.
+
+
+```{r }
+correlation_matrix <- cor(df_glass)
+# Plotting the heatmap
+#ggcorrplot(correlation_matrix, hc.order = TRUE, type = "lower", lab = TRUE)
+```
+```{r }
+model_type <- lm(glass_type ~ Na + Mg + Al + Si + K_Pota + Ca + Ba + Fe, data = df_glass)
+summary(model_type )
+```   
+```{r }
+par(mfrow=c(2,2))
+plot (model_type)
+```
+
+```{r}
+model_ri <- lm(RI ~ Na + Mg + Al + Si + K_Pota + Ca + Ba + Fe, data = df_glass)
+summary(model_ri)
+```
+
+```{r }
+model_ri <- lm(glass_type ~ Na + Mg + Al + Si + K_Pota + Ca + Ba + Fe, data = df_glass)
+summary(model_ri)
+
+```
+
+```{r}
+
+ggplot(df_glass, aes(x = factor(glass_type), y = Al, fill = factor(glass_type))) +
+  geom_boxplot() +
+  labs(
+    x = "Glass Type",
+    y = "Al",
+    fill = "Glass Type"
+  )
+ggplot(df_glass, aes(x = factor(glass_type), y = Na, fill = factor(glass_type))) +
+  geom_boxplot() +
+  labs(
+    x = "Glass Type",
+    y = "Na",
+    fill = "Glass Type"
+  )
+
+```
+
+**Plot  for signifcabt variable for RI**
+```{r }
+# Assuming df_glass is your dataframe
+
+par(mfrow = c(2, 2))  # Setting up the layout for multiple plots
+
+# Scatterplot and trend line for 'Na' vs 'RI'
+plot(df_glass$Na, df_glass$RI, 
+     xlab = "Na", ylab = "RI", 
+     main = "RI vs Na", col = "#009999")
+abline(lm(RI ~ Na, data = df_glass), col = "red")
+
+# Scatterplot and trend line for 'Mg' vs 'RI'
+plot(df_glass$Mg, df_glass$RI, 
+     xlab = "Mg", ylab = "RI", 
+     main = "RI vs Mg", col = "#009999")
+abline(lm(RI ~ Mg, data = df_glass), col = "red")
+
+# Scatterplot and trend line for 'K_Pota' vs 'RI'
+plot(df_glass$K_Pota, df_glass$RI, 
+     xlab = "K_Pota", ylab = "RI", 
+     main = "RI vs K_Pota", col = "#009999")
+abline(lm(RI ~ K_Pota, data = df_glass), col = "red")
+
+# Scatterplot and trend line for 'Ca' vs 'RI'
+plot(df_glass$Ca, df_glass$RI, 
+     xlab = "Ca", ylab = "RI", 
+     main = "RI vs Ca", col = "#009999")
+abline(lm(RI ~ Ca, data = df_glass), col = "red")
+
+```
+```{r fig.width=10}
+X <- df_glass[, 2:(ncol(df_glass) - 1)]  # Excluding the 'RI' and 'glass_type' variables
+
+# Setting up the layout for multiple plots
+par(mfrow = c(3, 3))
+
+for (i in 1:ncol(X)) {
+  if (is.numeric(X[, i])) {
+    # Density plot for each variable against 'RI'
+    density_values <- density(X[, i])
+    
+    plot(density_values, type = 'l', 
+         xlab = "RI", ylab = "Density",
+         col = "#009999", main = paste(names(X)[i], "Density vs RI"))
+    polygon(density_values, col = adjustcolor("#009999", alpha.f = 0.3), border = NA)
+  }
+}
+
+
+``` 
+```{r }
+X <- df_glass[, 2:(ncol(df_glass) - 1)]  # Excluding the 'RI' and 'glass_type' variables
+
+# Calculate correlation matrix
+correlation_matrix <- cor(cbind(X, RI = df_glass$RI))
+
+# Create a heatmap of correlations
+library(ggplot2)
+library(reshape2)
+
+correlation_df <- melt(correlation_matrix)
+ggplot(correlation_df, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = '#009999') +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap of RI with Other Variables")
+
+
+```
+```{r fig.width=10}
+X <- df_glass[, 2:(ncol(df_glass) - 1)]  # Excluding 'RI' and 'glass_type'
+
+# Setting up the layout for multiple plots
+par(mfrow = c(3, 3))
+
+for (i in 1:ncol(X)) {
+  plot(df_glass$RI, X[, i], 
+       xlab = "RI", ylab = names(X)[i],
+       col = "#009999", main = paste("RI vs", names(X)[i]))
+}
+
+
+
+```
+
+```{r }
+# Subset the data excluding 'RI' and 'glass_type'
+X <- df_glass[, 2:(ncol(df_glass) - 1)]
+
+# Calculate correlation matrix
+correlation_matrix <- cor(cbind(X, RI = df_glass$RI))
+
+# Plotting heatmap using the 'corrplot' package
+library(corrplot)
+
+# Displaying the correlation matrix as a heatmap
+corrplot(correlation_matrix, method = "color", type = "upper",
+         addCoef.col = "black", tl.col = "black",
+         title = "Correlation Heatmap of RI with Other Variables")
+
+
+
+```
+
+```{r}
+ggplot(df_glass, aes(x = Na, y = RI, color = RI)) +
+  geom_point() +
+  labs(
+    x = "Na",
+    y = "RI",
+    color = "RI"
+  ) +
+  theme_minimal()
+
+```
+
+```{r }
+library(ggplot2)
+
+# Assuming your data frame is df_glass
+ggplot(df_glass, aes(x = factor(glass_type), y = Al)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(x = "Glass Type", y = "Al") +
+  ggtitle("Boxplot of Al by Glass Type")
+ 
+
+```
+```{r }
+# Assuming your data frame is df_glass
+ggplot(df_glass, aes(x = factor(glass_type), y = Na)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(x = "Glass Type", y = "Na") +
+  ggtitle("Boxplot of Al by Glass Type")
+
+```
+```{r }
+# Assuming your data frame is df_glass
+ggplot(df_glass, aes(x = factor(glass_type), y = Na)) +
+  geom_boxplot(fill = "steelblue") +
+  labs(x = "Glass Type", y = "Al") +
+  ggtitle("Boxplot of Al by Glass Type")
+
+
+```
+
+```{r }
+# Assuming your data frame is df_glass
+ggplot(df_glass, aes(x = factor(glass_type), y = Al, color = factor(glass_type))) +
+  geom_point(position = position_jitter(width = 0.3), alpha = 0.6, size = 3) +
+  labs(x = "Glass Type", y = "Al") +
+  ggtitle("Scatter Plot of Al by Glass Type") +
+  scale_color_discrete(name = "Glass Type")
+
+```
+
+```{r }
+df_glass$glass_type=as.factor(df_glass$glass_type)
+str(df_glass)
+```
+```{r}
+
+
+```
+
+```{r}
+library(ggplot2)
+plot <- ggplot(df_glass, aes(x = RI, y = Na, color = type)) +
+  geom_point() +
+  labs(
+    x = "RI",
+    y = "Na",
+    color = "Type",
+    title = "Scatter Plot of RI vs Na with Type",
+    caption = 'Relationship of Sodium (NA) with Reflexive Index and Galss Type')
+# Apply theme to modify caption appearance
+plot + theme(
+  plot.caption = element_text(
+    color = "steelblue",                     # Change text color
+    size = ,                          # Adjust text size
+    hjust = 0.5,                        # Horizontal alignment
+    margin = margin(t = 10, l = 20, unit = "pt"), # Add margin from the top
+    #position= 'top'
+  )
+)
+#Na is an important feature for glass type
+#Ri distribution does not provide much insight
+
+
+```
+```{r }
+
+
+
+plot <- ggplot(df_glass, aes(x = Al, y = RI, color = type)) +
+  geom_point() +
+  labs(
+    x = "Al",
+    y = "RI",
+    color = "Type",
+    title = "Scatter Plot of RI vs Na with Type",
+    caption = 'Relationship of Sodium (NA) with Reflexive Index and Galss Type')
+# Apply theme to modify caption appearance
+plot + theme(
+  plot.caption = element_text(
+    color = "steelblue",                     # Change text color
+    size = ,                          # Adjust text size
+    hjust = 0.5,                        # Horizontal alignment
+    margin = margin(t = 10, l = 20, unit = "pt"), # Add margin from the top
+    #position= 'top'
+  )
+)
+```
+
+```{r}
+plot <- ggplot(df_glass, aes(x = Mg, y = Al, color = type)) +
+  geom_point() +
+  labs(
+    x = "Al",
+    y = "Na",
+    color = "Type",
+    title = "Scatter Plot of NA vs Mg with Type",
+    caption = ''
+  )
+
+# Apply theme to modify caption appearance
+plot + theme(
+  plot.caption = element_text(
+    color = "black",                     # Change text color
+    size = 10,                          # Adjust text size
+    hjust = 0.5,                        # Horizontal alignment
+    margin = margin(t = 15, unit = "pt") # Add margin from the top
+  )
+)
+
