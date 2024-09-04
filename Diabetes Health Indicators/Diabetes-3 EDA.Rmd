@@ -1,0 +1,363 @@
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+date: "2024-01-04"
+---
+
+```{r }
+df=read.csv('diabetes_binary_health_indicators_BRFSS2015.csv')
+```
+
+```{r }
+# Identify duplicates in the dataframe
+duplicate_rows <- duplicated(df)
+
+# Create a new dataframe (df2) without duplicates
+df2 <- df[!duplicate_rows, ]
+nrow(df2)
+```
+```{r }
+# Replace values in df2 based on conditions
+df2$Diabetes_binary_str <- ifelse(df2$Diabetes_binary == 0, "Non-Diabetic", "Diabetic")
+
+# Create a function to map age values to categories
+map_age <- function(age) {
+  if (age == 1) return('18 to 24')
+  else if (age == 2) return('25 to 29')
+  else if (age == 3) return('30 to 34')
+  else if (age == 4) return('35 to 39')
+  else if (age == 5) return('40 to 44')
+  else if (age == 6) return('45 to 49')
+  else if (age == 7) return('50 to 54')
+  else if (age == 8) return('55 to 59')
+  else if (age == 9) return('60 to 64')
+  else if (age == 10) return('65 to 69')
+  else if (age == 11) return('70 to 74')
+  else if (age == 12) return('75 to 79')
+  else if (age == 13) return('80 or older')
+}
+
+# Apply the map_age function to 'Age' column
+df2$Age <- sapply(df2$Age, map_age)
+
+# Replace other columns based on conditions
+df2$Diabetes_binary <- ifelse(df2$Diabetes_binary == 0, 'No Diabetes', 'Diabetes')
+df2$HighBP <- ifelse(df2$HighBP == 0, 'No High', 'High BP')
+df2$HighChol <- ifelse(df2$HighChol == 0, 'No High Cholesterol', 'High Cholesterol')
+# Continue replacing other columns similarly...
+
+# Replace education levels
+df2$Education <- ifelse(df2$Education == 1, 'Never Attended School',
+                        ifelse(df2$Education == 2, 'Elementary',
+                               ifelse(df2$Education == 3, 'Junior High School',
+                                      ifelse(df2$Education == 4, 'Senior High School',
+                                             ifelse(df2$Education == 5, 'Undergraduate Degree',
+                                                    ifelse(df2$Education == 6, 'Magister', ''))))))
+
+# Replace income ranges
+df2$Income <- ifelse(df2$Income %in% c(1, 2, 3, 4), 'Less Than $10,000',
+                     ifelse(df2$Income %in% c(5, 6, 7), 'Less Than $35,000',
+                            ifelse(df2$Income == 8, '$75,000 or More', '')))
+
+# Replace remaining columns following a similar pattern...
+
+```
+
+```{r }
+# Replace remaining columns based on conditions
+df2$CholCheck <- ifelse(df2$CholCheck == 0, 'No Cholesterol Check', 'Cholesterol Check')
+df2$Smoker <- ifelse(df2$Smoker == 0, 'No', 'Yes')
+df2$Stroke <- ifelse(df2$Stroke == 0, 'No', 'Yes')
+df2$HeartDiseaseorAttack <- ifelse(df2$HeartDiseaseorAttack == 0, 'No', 'Yes')
+df2$PhysActivity <- ifelse(df2$PhysActivity == 0, 'No', 'Yes')
+df2$Fruits <- ifelse(df2$Fruits == 0, 'No', 'Yes')
+df2$Veggies <- ifelse(df2$Veggies == 0, 'No', 'Yes')
+df2$HvyAlcoholConsump <- ifelse(df2$HvyAlcoholConsump == 0, 'No', 'Yes')
+df2$AnyHealthcare <- ifelse(df2$AnyHealthcare == 0, 'No', 'Yes')
+df2$NoDocbcCost <- ifelse(df2$NoDocbcCost == 0, 'No', 'Yes')
+df2$GenHlth <- ifelse(df2$GenHlth == 5, 'Excellent',
+                      ifelse(df2$GenHlth == 4, 'Very Good',
+                             ifelse(df2$GenHlth == 3, 'Good',
+                                    ifelse(df2$GenHlth == 2, 'Fair',
+                                           ifelse(df2$GenHlth == 1, 'Poor', '')))))
+
+df2$DiffWalk <- ifelse(df2$DiffWalk == 0, 'No', 'Yes')
+df2$Sex <- ifelse(df2$Sex == 0, 'Female', 'Male')
+```
+```{r fig.width= 8 }
+# Required libraries
+library(ggplot2)
+library(gridExtra)
+
+# Columns to plot
+cols <- c('HighBP', 'HighChol', 'CholCheck', 'Smoker',
+          'Stroke', 'HeartDiseaseorAttack', 'PhysActivity', 'Veggies',
+          'HvyAlcoholConsump', 'AnyHealthcare', 'NoDocbcCost', 'DiffWalk')
+
+# Function to create a pivot table for plotting
+create_plot_pivot <- function(df2, x_column) {
+  df_plot <- table(df2[[x_column]], df2$Diabetes_binary)
+  return(as.data.frame(df_plot))
+}
+
+# Create a list to store the plots
+plots <- list()
+
+# Loop to create plots for each column
+for (i in 1:length(cols)) {
+  df_plot <- create_plot_pivot(df2, cols[i])
+  
+  p <- ggplot(df_plot, aes(x = Var1, y = Freq, fill = Var2)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(x = cols[i], y = " Diabetes Count") +
+    theme_minimal()+
+    theme(legend.position = "bottom") 
+  
+  plots[[i]] <- p
+}
+
+# Arrange the plots in a grid
+grid.arrange(grobs = plots, ncol = 5, heights = rep(5, ceiling(length(cols)/5)))
+
+```
+```{r  fig.width=8}
+# Define your columns
+cols <- c('HighBP', 'HighChol', 'CholCheck', 'Smoker',
+          'Stroke', 'HeartDiseaseorAttack', 'PhysActivity', 'Veggies',
+          'HvyAlcoholConsump', 'AnyHealthcare', 'NoDocbcCost', 'DiffWalk')
+
+# Function to create a pivot table
+create_plot_pivot <- function(data2, x_column) {
+  df_plot <- table(data2[[x_column]], data2$Diabetes_binary)
+  return(df_plot)
+}
+
+# Create a layout for plots
+par(mfrow = c(3, 4))  # 3 rows, 4 columns for subplots
+
+# Loop through each column and create plots
+for (i in 1:length(cols)) {
+  df_plot <- create_plot_pivot(df2, cols[i])
+  
+  # Convert table to stacked bar plot
+  barplot(df_plot, beside = TRUE, col = c("darkgoldenrod3", "slategray"),
+          main = paste("Relation between", cols[i], "and Diabetes"),
+          xlab = cols[i], ylab = "Diabetes Count")
+}
+
+
+```
+
+```{r  fig.width= 10}
+
+# Create a cross-tabulation table
+cross_tab <- table(df2$Age, df2$Diabetes_binary)
+
+# Convert to data frame
+df_cross_tab <- as.data.frame(cross_tab)
+
+# Rename columns for better readability
+colnames(df_cross_tab) <- c('Age', 'Diabetes_binary', 'Frequency')
+
+# Create a bar plot using ggplot2
+ggplot(df_cross_tab, aes(x = Age, y = Frequency, fill = Diabetes_binary)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.7) +
+  labs(title = "Diabetes Disease Frequency for Ages",
+       x = "Age",
+       y = "Frequency") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))  # Rotate x-axis labels if needed
+
+
+```
+
+```{r  fig.width=10}
+
+# Creating a grid of three plots for each level of GenHlth
+ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge",  width = 0.8) +
+  labs(title = "Relation between BMI and Diabetes with General Health",
+       x = "BMI",
+       y = "Count Diabetes") +
+  facet_grid(. ~ factor(GenHlth)) +  # Creating a grid of plots for each level of GenHlth
+  scale_fill_manual(values = c("darkorange3", "steelblue"), name = "Diabetes") +
+  theme_minimal()
+```
+
+```{r}
+
+# Assuming your target variable is a factor/character, let's convert it to a string for better representation
+df2$Diabetes_binary_str <- as.character(df2$Diabetes_binary)
+
+# Creating a density plot for Income and Diabetes_binary
+ggplot(df2, aes(x = Income, fill = Diabetes_binary_str)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Relation between Income and Diabetes",
+       x = "Income",
+       y = "Density") +
+  theme_minimal()
+
+```
+```{r }
+library(ggplot2)
+
+# Assuming your target variable is a factor/character, let's convert it to a string for better representation
+df2$Diabetes_binary <- as.character(df2$Diabetes_binary)
+
+ggplot(df2, aes(x = factor(PhysHlth), fill = Diabetes_binary)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Diabetes Disease Frequency for Physical Health",
+       x = "PhysHlth",
+       y = "Diabetes") +
+  theme(axis.text.x = element_text(angle = 0),
+        panel.grid.major = element_blank()) +
+  scale_fill_manual(values = c("darkorange3", "steelblue"))
+
+
+ggplot(df2, aes(x = factor(MentHlth), fill = Diabetes_binary)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Diabetes Disease Frequency for Mental Health",
+       x = "PhysHlth",
+       y = "Diabetes") +
+  theme(axis.text.x = element_text(angle = 0),
+        panel.grid.major = element_blank()) +
+  scale_fill_manual(values = c("darkorange3", "steelblue"))
+
+```
+
+```{R }
+library(ggplot2)
+
+# Assuming 'Sex' and 'Diabetes_binary' are columns in your dataframe df2
+
+# Plotting Diabetes_binary grouped by Sex
+ggplot(df2, aes(x = Diabetes_binary, fill = Sex)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Diabetes Distribution by Sex",
+       x = "Diabetes_binary",
+       y = "Frequency") +
+  scale_fill_manual(values = c("pink", "steelblue"), labels = c("Female", "Male")) +
+  theme_minimal()
+
+
+```
+
+
+```{r fig.width=10}
+#binary_data <- df2[, c("HighBP", "HighChol", "CholCheck", "Smoker", "Stroke", "HeartDiseaseorAttack", "PhysActivity", "Fruits", "Veggies", "HvyAlcoholConsump", "AnyHealthcare", "DiffWalk", "Sex")]
+
+plot1=ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.8) +
+  labs(title = "Relation between BMI and Diabetes with Smoke Habit",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(Smoker)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot2=ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Relation between BMI and Diabetes with Heart Stroke",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(Stroke)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+plot3=ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Relation between BMI and Diabetes with Heavy Alcohol Consumption",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HvyAlcoholConsump)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot4=ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Relation between BMI and Diabetes with High Blood Pressure",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HighBP)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot5=ggplot(df2, aes(x = BMI, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Relation between BMI and Diabetes with Heart Disease or Attack",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HeartDiseaseorAttack)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+library(gridExtra)
+grid.arrange(
+    plot1, plot2, plot3, plot4, plot5,  # Replace with your plot objects
+    nrow = 3 )
+
+```
+```{r  fig.width=12}
+library(ggplot2)
+plot1=ggplot(df2, aes(x = Sex, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.5) +
+  labs(title = "Relation between BMI and Diabetes with Smoke Habit",
+       x = "Sex",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(Smoker)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot2=ggplot(df2, aes(x = Sex, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.5) +
+  labs(title = "Relation between BMI and Diabetes with Heart Stroke",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(Stroke)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+plot3=ggplot(df2, aes(x = Sex, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.5) +
+  labs(title = "Relation between BMI and Diabetes with Heavy Alcohol Consumption",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HvyAlcoholConsump)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot4=ggplot(df2, aes(x = Sex, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.5) +
+  labs(title = "Relation between BMI and Diabetes with High Blood Pressure",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HighBP)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+plot5=ggplot(df2, aes(x = Sex, fill = factor(Diabetes_binary))) +
+  geom_bar(position = "dodge", width = 0.5) +
+  labs(title = "Relation between BMI and Diabetes with Heart Disease or Attack",
+       x = "BMI",
+       y = "Diabetes") +
+  facet_grid(. ~ factor(HeartDiseaseorAttack)) +  # Correct facet_grid call here
+  scale_fill_manual(values = c("red", "yellowgreen"), name = "Diabetes") +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 9))
+
+
+library(gridExtra)
+grid.arrange(
+    plot1, plot2, plot3, plot4, plot5,  # Replace with your plot objects
+    nrow = 3  # Adjust the number of rows as needed
+)
+```
